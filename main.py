@@ -5,25 +5,51 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.keys import Keys
-
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.proxy import Proxy, ProxyType
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
 import pyperclip
-
 import re
-
 import tkinter as tk
 from tkinter import messagebox
-
 import time
 import threading
-
 import csv
+from dotenv import load_dotenv
+import os
+
+from article_generator import generate_article
+
+# load_dotenv()
+
+# HTTP_PROXY = os.getenv('HTTP_PROXY')
+# HTTPS_PROXY = os.getenv('HTTPS_PROXY')
 
 article_url = r'https://www.thetakeout.com/category/news/'
 hemingway_url = r'https://hemingwayapp.com/'
 spam_checker_url = r'https://mailmeteor.com/spam-checker'
 ai_detector_url = r'https://quillbot.com/ai-content-detector'
 
-driver = webdriver.Chrome()
+# set selenium-wire options to use the proxy
+# seleniumwire_options = {
+#     "proxy": {
+#         "http": HTTP_PROXY,
+#         "https": HTTPS_PROXY
+#     },
+# }
+
+# set Chrome options to run in headless mode
+# options = Options()
+# options.add_argument("--headless=new")
+
+# initialize the Chrome driver with service, selenium-wire options, and chrome options
+driver = webdriver.Chrome(
+    # service=Service(ChromeDriverManager().install()),
+    # seleniumwire_options = seleniumwire_options,
+    # options=options
+)
+
 for i in range(4):
     driver.execute_script("window.open();")
 
@@ -140,7 +166,7 @@ sub_articles.forEach(function(sub_article) {
                 actions = ActionChains(driver)
                 actions.key_down(Keys.CONTROL).send_keys('a').key_up(Keys.CONTROL).perform()
                 actions.key_down(Keys.CONTROL).send_keys('v').key_up(Keys.CONTROL).perform()
-                time.sleep(0.5)
+                time.sleep(2)
                 wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'div[class="hwt-highlights hwt-content"]')))
                 spam_checker_editor = driver.find_element(By.CSS_SELECTOR, 'div[class="hwt-highlights hwt-content"]')
                 spam_checker_error_controls = spam_checker_editor.find_elements(By.CSS_SELECTOR, 'mark')
@@ -226,6 +252,9 @@ sub_articles.forEach(function(sub_article) {
                         print(f'ai generated: {len(_ai_detector_result_dicts[-1][ai_detector_result_key])} blocks')
                     elif ai_detector_result_key == 'p':
                         print(f'paraphrased: {len(_ai_detector_result_dicts[-1][ai_detector_result_key])} blocks')
+
+                print(_whole_articles[-1])
+                generate_article(_whole_articles[-1], [hemingway_error_dict, spam_checker_error_dict, ai_detector_result_dict])
             except:
                 ...
             finally:
