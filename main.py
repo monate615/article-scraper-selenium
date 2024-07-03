@@ -21,6 +21,7 @@ import csv
 article_url = r'https://www.thetakeout.com/category/news/'
 hemingway_url = r'https://hemingwayapp.com/'
 spam_checker_url = r'https://mailmeteor.com/spam-checker'
+ai_detector_url = r'https://quillbot.com/ai-content-detector'
 
 driver = webdriver.Chrome()
 for i in range(4):
@@ -32,6 +33,7 @@ _articels = []
 _whole_articles = []
 _hemingway_error_dicts = []
 _spam_check_dicts = []
+_ai_detector_result_dicts = []
 
 while True:
     try:
@@ -70,10 +72,10 @@ while True:
                 wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'div[contenteditable="true"]')))
                 hemingway_editor = driver.find_element(By.CSS_SELECTOR, 'div[contenteditable="true"]')
                 driver.execute_script("""
-    var element = arguments[0];
-    while (element.firstChild) {
-        element.removeChild(element.firstChild);
-    }
+var element = arguments[0];
+while (element.firstChild) {
+    element.removeChild(element.firstChild);
+}
 """, hemingway_editor)
                 driver.execute_script("""
 var parentElement = arguments[0];
@@ -127,6 +129,7 @@ sub_articles.forEach(function(sub_article) {
                     elif hemingway_repair_class.find('bg-violet-200') != -1:
                         hemingway_error_dict['violet'].append(hemingway_repair_control.get_attribute('innerText'))
                 _hemingway_error_dicts.append(hemingway_error_dict)
+
                 driver.switch_to.window(driver.window_handles[3])
                 driver.get(spam_checker_url)
                 pyperclip.copy(_whole_articles[-1])
@@ -160,6 +163,69 @@ sub_articles.forEach(function(sub_article) {
                     elif spam_checker_error_class.find('spam-category-overpromise') != -1:
                         spam_checker_error_dict['overpromise'].append(spam_checker_error_control.get_attribute('innerText'))
                 _spam_check_dicts.append(spam_checker_error_dict)
+
+                driver.switch_to.window(driver.window_handles[4])
+                driver.get(ai_detector_url)
+                wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'div[aria-label="Add text to get started"]')))
+                ai_detector_editor = driver.find_element(By.CSS_SELECTOR, 'div[aria-label="Add text to get started"]')
+                ai_detector_editor.click()
+                actions = ActionChains(driver)
+                pyperclip.copy(_whole_articles[-1])
+                actions.key_down(Keys.CONTROL).send_keys('a').key_up(Keys.CONTROL).perform()
+                actions.key_down(Keys.CONTROL).send_keys('v').key_up(Keys.CONTROL).perform()
+                wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'button[data-testid="aidr-primary-cta"]')))
+                ai_detector_button = driver.find_element(By.CSS_SELECTOR, 'button[data-testid="aidr-primary-cta"]')
+                ai_detector_button.click()
+                wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, 'h6[data-testid="aidr-detection-success-text"]')))
+                ai_detector_editor = driver.find_element(By.CSS_SELECTOR, 'div[aria-label="Add text to get started"]')
+                ai_detector_controls = ai_detector_editor.find_elements(By.CSS_SELECTOR, 'span')
+                ai_detector_result_dict = {}
+                ai_detector_result_dict['ai'] = []
+                ai_detector_result_dict['p'] = []
+                ai_detector_result_dict['hw'] = []
+                for ai_detector_control in ai_detector_controls:
+                    ai_detector_control_style = ai_detector_control.get_attribute('style')
+                    if ai_detector_control_style == None or ai_detector_control_style == "":
+                        ai_detector_result_dict['hw'].append(ai_detector_control.get_attribute('innerText'))
+                    elif ai_detector_control_style.find('background-color: rgba(242, 181, 24, 0.16);') != -1:
+                        ai_detector_result_dict['ai'].append(ai_detector_control.get_attribute('innerText'))
+                    else:
+                        ai_detector_result_dict['p'].append(ai_detector_control.get_attribute('innerText'))
+                _ai_detector_result_dicts.append(ai_detector_result_dict)
+
+                # output the error dicts
+                print('-------- hamingway errors ---------')
+                for hemingway_key in _hemingway_error_dicts[-1].keys():
+                    if hemingway_key == 'red':
+                        print(f'very hard to read: {len(_hemingway_error_dicts[-1][hemingway_key])} blocks')
+                    elif hemingway_key == 'yellow':
+                        print(f'hard to read: {len(_hemingway_error_dicts[-1][hemingway_key])} blocks')
+                    elif hemingway_key == 'lime':
+                        print(f'grammar issues: {len(_hemingway_error_dicts[-1][hemingway_key])} blocks')
+                    elif hemingway_key == 'sky':
+                        print(f'weakener: {len(_hemingway_error_dicts[-1][hemingway_key])} blocks')
+                    elif hemingway_key == 'violet':
+                        print(f'simpler alternatives: {len(_hemingway_error_dicts[-1][hemingway_key])} blocks')
+                print('-------- spam errors ---------')
+                for spam_key in _spam_check_dicts[-1].keys():
+                    if spam_key == 'shady':
+                        print(f'shady: {len(_spam_check_dicts[-1][spam_key])} blocks')
+                    elif spam_key == 'money':
+                        print(f'money: {len(_spam_check_dicts[-1][spam_key])} blocks')
+                    elif spam_key == 'urgency':
+                        print(f'urgency: {len(_spam_check_dicts[-1][spam_key])} blocks')
+                    elif spam_key == 'unnatural':
+                        print(f'unnatural: {len(_spam_check_dicts[-1][spam_key])} blocks')
+                    elif spam_key == 'overpromise':
+                        print(f'overpromise: {len(_spam_check_dicts[-1][spam_key])} blocks')
+                print('-------- ai detector ---------')
+                for ai_detector_result_key in _ai_detector_result_dicts[-1].keys():
+                    if ai_detector_result_key == 'hw':
+                        print(f'human writed: {len(_ai_detector_result_dicts[-1][ai_detector_result_key])} blocks')
+                    elif ai_detector_result_key == 'ai':
+                        print(f'ai generated: {len(_ai_detector_result_dicts[-1][ai_detector_result_key])} blocks')
+                    elif ai_detector_result_key == 'p':
+                        print(f'paraphrased: {len(_ai_detector_result_dicts[-1][ai_detector_result_key])} blocks')
             except:
                 ...
             finally:
